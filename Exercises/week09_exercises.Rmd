@@ -36,7 +36,7 @@ insects_raw <- read_csv("data/insecticides.csv")
 Classify the penguins into Gentoo and non-Gentoo. Pick bill length and bill depth as predictor (explanatory variables) and construct the decision boundary for classifying new observations. Also calculate the misclassification rate for existing observations.
 
 
-## Exercise 4: insecticides, take 2
+## Exercise 3: insecticides, take 2
 
 Again consider the insects and insecticides dataset. As before take the proportion killed as outcome variable and consider potential effects of deposit amount and type of insecticides.
 
