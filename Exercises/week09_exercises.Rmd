@@ -1,0 +1,57 @@
+---
+title: "Week 8 Exercises"
+author: "Wing-Ho Ko"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+
+```
+
+
+## Exercise 1: insecticides, take 1
+
+An experiment exposed batches of insects to various deposits (in mg) of insecticides. The proportion of insects 𝑦 killed after six days of exposure in each batch of size 𝑚 is potentially a function of the dose of insecticide and the type of insecticide. The dataset is included in the file insectsicides.csv in the data folder.
+
+```{r}
+insects_raw <- read_csv("data/insecticides.csv")
+```
+
+1. Perform a logistic regression to investigate the dependence of proportion of insects killed with (the log of) the amount of deposit and the type of insecticide. Ignore the interaction between the two for the time being.
+
+2. Is the dosage statistically significant? Is the difference between the type of insecticide statistically significant? (Again, to answer the second question you have to treat the variable as a whole)
+
+3. By what factor would the odds change when the dosage is doubled?
+
+4. Predict the mean proportion of insects killed for a range of dosage and for each type of insecticide, together with their 90% confidence intervals, using the logistic model obtained in (1). Plot the resulting confidence band together with the raw data, faceted with insecticide type.
+
+
+## Exercise 2: classifying penguins
+
+Classify the penguins into Gentoo and non-Gentoo. Pick bill length and bill depth as predictor (explanatory variables) and construct the decision boundary for classifying new observations. Also calculate the misclassification rate for existing observations.
+
+
+## Exercise 4: insecticides, take 2
+
+Again consider the insects and insecticides dataset. As before take the proportion killed as outcome variable and consider potential effects of deposit amount and type of insecticides.
+
+```{r}
+insects_raw <- read_csv("data/insecticides.csv")
+```
+
+1. Determine if the interaction between insecticide type and amount deposited should be included in the model.
+
+2. For the final model, determine if there’s any potential issues with the model assumptions
+
+
+## (Optional) Feedback questions
+
+1. Are there any topic(s) from this week that still confuse you?
+
+2. Which activities work and which doesn't? What do you want to see change and what do you want to keep?
+

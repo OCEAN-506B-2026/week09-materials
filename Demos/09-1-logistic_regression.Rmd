@@ -1,0 +1,307 @@
+---
+title: "Demos on logistic regression"
+author: "Wing-Ho Ko"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+library(tidyverse)
+library(broom)
+library(statmod)
+library(ecotox)
+library(ciTools)
+```
+
+## Example 1: mites occurrence dataset
+
+### Loading data
+
+We will work with the `mites` dataset, which record whether mites of genus _Galumna_ is found in 70 sites of different environmental conditions.
+
+```{r}
+mites <- read_csv("data/mites.csv") |> mutate(
+  Substrate = as.factor(Substrate),
+  Shrub = as.factor(Shrub),
+  Topo = as.factor(Topo)
+)
+glimpse(mites)
+```
+
+Our response variable in this case is `pa`, and for the purpose of analysis we will look at how the presence/absence of _Galumna_ is affected by water content (`WatrCont`) and topography (`Topo`). 
+
+```{r}
+ggplot(mites) + geom_point(aes(x=WatrCont, y=pa, color=Topo, shape=Topo))
+```
+
+### Performing logistic regression
+
+```{r}
+mites_glm <- glm(pa ~ WatrCont * Topo, binomial, mites)
+summary(mites_glm)
+```
+
+### Extracting information programatically
+
+```{r}
+glance(mites_glm)
+```
+
+```{r}
+tidy(mites_glm)
+```
+
+```{r}
+fitted(mites_glm)
+```
+
+```{r}
+confint(mites_glm)
+```
+
+### Making predictions
+
+Create new data frame for predictions
+
+```{r}
+water_new <- seq(130, 830, 20)
+topo_new <- distinct(mites["Topo"])$Topo
+
+mites_new <- data.frame(
+  WatrCont = rep(water_new, each=length(topo_new)),
+  Topo = rep(topo_new, times=length(water_new))
+)
+
+```
+
+Making predictions
+
+```{r}
+mites_pred <- predict(mites_glm, mites_new, type="response")
+mites_pred <- cbind(mites_new, mites_pred) |> rename (pa = mites_pred)
+```
+
+Plot the predictions against the data
+
+```{r}
+ggplot(mites, aes(x=WatrCont, y=pa, color=Topo)) + 
+  geom_point(aes(shape=Topo)) + 
+  geom_line(aes(linetype=Topo), mites_pred)
+```
+
+Use `add_ci()` to create both prediction and confidence intervals (on the response scale)
+
+```{r}
+mites_ci <- add_ci(mites_new, mites_glm)
+mites_ci
+```
+
+Again plot the prediction against observation
+
+```{r}
+ggplot(mites, aes(x=WatrCont, y=pa, color=Topo)) + 
+  geom_point(aes(shape=Topo)) + 
+  geom_line(aes(y=pred, linetype=Topo), mites_ci) + 
+  geom_ribbon(aes(y=NULL, ymin=LCB0.025, ymax=UCB0.975, fill=Topo), mites_ci, alpha=0.2)
+```
+
+
+## Example 2: mice survival dataset
+
+An experiment studied the survival of mice after receiving a test dose of culture with five different doses of antipneumococcus serum (in cc). The data is loaded below:
+
+```{r}
+serum <- read_csv("data/serum.csv") |> mutate(
+  Survivors = as.integer(Survivors),
+  Number = as.integer(Number)
+)
+```
+
+```{r}
+glimpse(serum)
+```
+
+### Fitting a logistic model
+
+Add a `Deceased` column to the data
+
+```{r}
+serum <- serum |> mutate(Deceased = Number - Survivors)
+```
+
+Perform fit and print summary
+
+```{r}
+serum_glm <- glm(cbind(Survivors, Deceased) ~ log10(Dose), binomial, serum)
+summary(serum_glm)
+```
+Predict confidence interval
+
+```{r}
+serum_ci <- add_ci(data.frame(Dose=serum$Dose), serum_glm)
+serum_ci
+```
+
+Plot the fitted value (with confidence interval) with the effective dose (with confidence interval) and the raw data
+
+```{r}
+ggplot() + geom_point(aes(x=Dose, y=Survivors/Number), serum) +
+  geom_line(aes(x=Dose, y=fitted(serum_glm)), serum, linetype="dashed") + 
+  geom_ribbon(
+    aes(x=Dose, ymin=LCB0.025, ymax=UCB0.975), 
+    serum_ci, color="gray", alpha=0.2
+  ) + 
+  scale_x_continuous(transform="log10")
+```
+
+
+## Example 3: swiss banknotes redux
+
+```{r}
+banknotes <- read_csv("data/banknotes.csv") |>
+  mutate(Currency = as.integer(Currency))
+```
+
+```{r}
+bnotes_glm <- glm(
+  Currency ~ Length + Left + Right + Bottom + Top, 
+  binomial, banknotes
+)
+
+summary(bnotes_glm)
+```
+
+```{r}
+ggplot(banknotes, aes(x=Bottom, y=Top, color=as.factor(Currency))) + 
+  geom_point()
+```
+
+```{r}
+bnotes_glm <- glm(
+  Currency ~ Bottom + Top, 
+  binomial, banknotes
+)
+
+summary(bnotes_glm)
+```
+
+```{r}
+banknotes |> summarize(
+  min_Bottom = min(Bottom),
+  max_Bottom = max(Bottom),
+  min_Top = min(Top),
+  max_Top = max(Top)
+)
+```
+
+```{r}
+new_Bottom <- seq(7, 13, 0.1)
+new_Top <- seq(7, 13, 0.1)
+new_bnotes <- data.frame(
+  Bottom = rep(new_Bottom, each=length(new_Top)),
+  Top = rep(new_Top, times=length(new_Bottom))
+)
+
+bnotes_pred <- add_ci(new_bnotes, bnotes_glm)
+```
+
+```{r}
+ggplot() + 
+  geom_contour(
+    aes(x=Bottom, y=Top, z=pred), 
+    bnotes_pred, 
+    breaks = c(0.1, 0.3, 0.5, 0.7, 0.9),
+    linetype="dashed"
+  ) + 
+  geom_point(
+    aes(x=Bottom, y=Top, color=as.factor(Currency)),
+    banknotes
+  )  
+```
+
+```{r}
+bnotes_fitted <- banknotes |> 
+  mutate(class = ifelse(fitted(bnotes_glm) > 0.5, 1, 0))
+```
+
+```{r}
+bnotes_fitted |> summarize(
+  correct = sum(class == Currency),
+  incorrect = sum(class != Currency),
+  accuracy = mean(class == Currency)
+)
+```
+
+
+## Example 4: model selection and diagonoses
+
+Work again with the mites dataset:
+
+```{r}
+mites <- read_csv("data/mites.csv") |> mutate(
+  Substrate = as.factor(Substrate),
+  Shrub = as.factor(Shrub),
+  Topo = as.factor(Topo)
+)
+glimpse(mites)
+```
+
+### Model selection
+
+Start with the model with full interactions:
+
+```{r}
+mites_glm1 <- glm(pa ~ WatrCont * Topo, binomial, mites)
+```
+
+Compare with the model for which the effects of the explanatory variables are additive:
+
+```{r}
+mites_glm2 <- glm(pa ~ WatrCont + Topo, binomial, mites)
+anova(mites_glm2, mites_glm1)
+```
+
+Thus we should prefer the simpler model.
+
+Alternatively, the `step()` function can be used for stepwise model selection:
+
+```{r}
+mites_glm_best <- step(mites_glm1, direction="backward")
+```
+
+We see that the stepwise selection picked the same model with additive terms
+
+### Model diagnosis
+
+Construct the quantile residuals
+
+```{r}
+mites_qresid <- qresid(mites_glm_best)
+mites_fitted <- fitted(mites_glm_best)
+```
+
+Plot the quantile residuals against the fitted values
+
+```{r}
+ggplot() + geom_point(aes(x=mites_fitted, y=mites_qresid))
+```
+
+The plot looks OK (no systematic trend in mean or variance). Now look at the Q-Q plot
+
+```{r}
+ggplot(mapping=aes(sample=mites_qresid)) + geom_qq() + geom_qq_line()
+```
+
+Finally check the variance
+
+```{r}
+var(mites_qresid)
+```
+
+In conclusion, we do not see any serious problems
+
